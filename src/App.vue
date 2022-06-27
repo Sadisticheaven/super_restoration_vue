@@ -8,7 +8,7 @@
 
   <router-view v-slot="{ Component }">
     <keep-alive include="RestoreView">
-      <component :is="Component" />
+      <component :is="Component" :key="$route.name"/>
     </keep-alive>
   </router-view>
 <!--  <transition name="slide-left" mode="out-in">-->

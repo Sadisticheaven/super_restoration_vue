@@ -18,13 +18,14 @@
 <script>
 import ArticleSkeleton from "@/components/Article";
 export default {
-  name: "SRCNN",
+  name: "SwinIR",
   data() {
     return {
-      modelName: "SRCNN",
+      modelName: "SwinIR",
     };
   },
   components: { ArticleSkeleton },
+
 };
 </script>
 

@@ -4,7 +4,7 @@ export default createStore({
     dynamicRoutes: [],
     modelList: [],
     userInfo: {
-      userId: -1,
+      userId: 1,
       userName: '',
       userPwd: '',
       userPhone: '',

@@ -43,8 +43,9 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next)=>{
   if(store && store.state.dynamicRoutes.length === 0){
-    let res = await getModelList()
+    let res = await getModelList();
     let models = res.data;
+
     let parentRoute = routes[2]; // /model_list
     console.log("getModelList:", models);
     models.forEach(v => {
@@ -53,9 +54,11 @@ router.beforeEach(async (to, from, next)=>{
         name: v.modelName,
         component: () => import('../views/modelDesc/' + v.modelName)
       };
-      parentRoute.children.push(newRoute);
+      if(!parentRoute.children.some(item=> item.name == newRoute.name))
+        parentRoute.children.push(newRoute);
       // router.addRoute(parentRoute.name, newRoute);
     });
+
     parentRoute.redirect = parentRoute.children[0].path;
     router.addRoute(parentRoute);
     console.log("routes:", routes);

@@ -5,7 +5,8 @@
       <keep-alive>
         <UploadImage ref="uploadImgRef" v-loading="loading"></UploadImage>
       </keep-alive>
-      <el-select v-model="modelName" class="modelNameSelect" placeholder="Select" size="large">
+      <el-select v-model="modelName" class="modelNameSelect" @change="modelChange"
+                 placeholder="请选择算法" filterable size="large">
         <el-option
             v-for="(value, key) in modelsInfo"
             :key="key"
@@ -13,7 +14,9 @@
             :value="key"
         />
       </el-select>
-      <el-select v-model="modelScale" class="modelScaleSelect" placeholder="Select" size="default">
+      <el-select v-model="modelScale" class="modelScaleSelect"
+                 clearable @clear="modelScale = ''"
+                 placeholder="请选择倍率" size="default">
         <el-option
             v-for="(value, key) in modelsInfo[modelName]"
             :key="key"
@@ -22,12 +25,14 @@
         />
       </el-select>
       <el-button @click="uploadImg">一键高清</el-button>
+
+
     </el-aside>
     <el-main class="chooseModel" height="50px" width="100%">
       <div>
         <ContrastImageWithPreview width="800" height="600">
             <template #left>
-              <el-image :src="bicubicUrl" class="images">
+              <el-image :src="leftUrl" class="images" id="leftImg" ref="leftRef" @load="imageLoadSuccess">
                 <template #error>
                   <div class="image-slot">
                     <Picture></Picture>
@@ -36,7 +41,7 @@
               </el-image>
             </template>
             <template #right>
-              <el-image :src="srUrl" class="images">
+              <el-image :src="rightUrl" class="images" id="rightImg" ref="rightRef" @load="imageLoadSuccess">
                 <template #error>
                   <div class="image-slot">
                     <Picture></Picture>
@@ -47,7 +52,24 @@
         </ContrastImageWithPreview>
 <!--        <el-button @click="test"></el-button>-->
       </div>
-
+      <div class="imageInfo" style="margin-bottom: 50px;">
+        <el-descriptions title="图片信息" :column="2" border>
+          <el-descriptions-item label="算法">
+            <el-tag size="small" v-text="this.modelName!=''?this.modelName:'无'"></el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="处理前尺寸">
+            <el-tag size="small" v-text="this.leftImgInfo.hasOwnProperty('width')
+                                ?this.leftImgInfo.width+'x'+this.leftImgInfo.height:'无'"></el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="放大倍率">
+            <el-tag size="small" v-text="this.modelScale!=''?'x'+this.modelScale:'无'"></el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="处理后尺寸">
+            <el-tag size="small" v-text="this.rightImgInfo.hasOwnProperty('width')
+                                ?this.rightImgInfo.width+'x'+this.rightImgInfo.height:'无'"></el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
     </el-main>
   </el-container>
 </div>
@@ -75,14 +97,14 @@ export default {
       res: {},
       bicubic: '',
       sr: '',
-      // bicubicUrl: '', // 用于img标签显示图片
-      bicubicUrl: 'http://192.168.108.66:8181/result/root/realRes/bicubic/x4/2022-06-16_10-29-31/origin.jpg', // 用于img标签显示图片
-      // srUrl: ''
-      srUrl: 'http://192.168.108.66:8181/result/root/realRes/SRCNN/x4/2022-06-16_10-29-31/origin.jpg'
+      leftUrl: '', // 用于img标签显示图片
+      rightUrl: '',
+      leftImgInfo: {},
+      rightImgInfo: {},
     }
   },
   components:{
-    UploadImage, ContrastImageWithPreview,// PreviewImage
+    UploadImage, Picture, ContrastImageWithPreview,// PreviewImage
   },
   computed: {
     modelsInfo(){
@@ -106,7 +128,6 @@ export default {
           this.bicubic = newValue.originUrl
           this.sr = newValue.resultUrl
           this.$message.success('正在处理，喝口水吧~')
-
           this.loading = true
         }else{
           this.bicubic = ''
@@ -117,16 +138,26 @@ export default {
       },
     },
     bicubic(newValue, oldValue){
-      if(newValue != "") this.isImgOk(newValue, 'bicubicUrl')
+      if(newValue != "") this.isImgOk(newValue, 'leftUrl')
     },
     sr(newValue, oldValue){
-      if(newValue != "") this.isImgOk(newValue, 'srUrl')
+      if(newValue != "") this.isImgOk(newValue, 'rightUrl')
     },
-    bicubicUrl(newValue, oldValue){
-      if(newValue != "" && this.srUrl!="") this.loading = false
+    leftUrl(newValue, oldValue){
+      // console.log("watch: "+newValue)
+      // console.log("watch: "+this.srUrl)
+      if(newValue != "" && this.rightUrl!="") {
+        console.log("loading off")
+        this.loading = false
+      }
     }
   },
   methods: {
+    modelChange(){
+      this.modelScale = ''
+      console.log(this.modelScale == "")
+    },
+
     checkLoginStatus(){
       let userId = store.state.userInfo.userId
       if(userId == null || userId < 0) {
@@ -138,6 +169,14 @@ export default {
     },
 
     async uploadImg(){
+      if(this.$refs.uploadImgRef.imgUrl == ''){
+        this.$message.warning('请先上传图片~')
+        return
+      }
+      if(this.modelName == '' || this.modelScale == ''){
+        this.$message.warning('请先选择算法和倍率~')
+        return
+      }
       if(this.checkLoginStatus()){
         // 发送请求
         this.$refs.uploadImgRef.$refs.upLoadRef.submit()
@@ -172,10 +211,23 @@ export default {
       emitter.on('beforeDestroy', () => { clearInterval(timer) })
     },
 
+    imageLoadSuccess(e){
+      if(e.currentTarget.id == 'leftImg'){
+        this.leftImgInfo = {
+          'height': e.currentTarget.naturalHeight/this.modelScale,
+          'width': e.currentTarget.naturalWidth/this.modelScale,
+        }
+      }else{
+        this.rightImgInfo = {
+          'height': e.currentTarget.naturalHeight,
+          'width': e.currentTarget.naturalWidth,
+        }
+      }
+    }
   },
 
   created() {
-    console.log("created RV")
+
   },
 
   beforeUnmount() {
